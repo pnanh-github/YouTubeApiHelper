@@ -7,6 +7,7 @@ This library can:
 - Get Playlists list
 - Get Videos list
 - View youtube video in app
+- And more ... 
 
 ## Required Frameworks:
 - GoogleAPIClientForREST
