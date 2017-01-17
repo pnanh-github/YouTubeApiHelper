@@ -14,10 +14,13 @@
 
 @implementation YouTubeVideoHelper
 
+
 #pragma mark - Upload Video
 -(void)uploadVideo:(NSURL *)fileURL withName:(NSString *)videoName description:(NSString *)descriptionText progress:(ProgressBlock)pBlock andCompletion:(UploadCompletionBlock)completion{
     if(self.authorizer && [self.authorizer canAuthorize]){
         if(self.apiKey){
+            self.servive.APIKey = self.apiKey;
+            self.servive.authorizer = self.authorizer;
             GTLRYouTube_VideoStatus *status = [GTLRYouTube_VideoStatus object];
             status.privacyStatus = @"public";
             
@@ -32,9 +35,8 @@
             video.status = status;
             video.snippet = snippet;
             
-            NSURL *fileToUploadURL = [NSURL fileURLWithPath:[[NSBundle mainBundle] pathForResource:@"demo" ofType:@"mov"]];
             NSError *fileError;
-            if (![fileToUploadURL checkPromisedItemIsReachableAndReturnError:&fileError]) {
+            if (![fileURL checkPromisedItemIsReachableAndReturnError:&fileError]) {
                 NSDictionary *userInfo = @{
                                            NSLocalizedDescriptionKey: NSLocalizedString(@"File Error.", nil),
                                            NSLocalizedFailureReasonErrorKey: NSLocalizedString(@"File Error.", nil),
@@ -47,13 +49,13 @@
 
             }
             // Get a file handle for the upload data.
-            NSString *filename = [fileToUploadURL lastPathComponent];
+            NSString *filename = [fileURL lastPathComponent];
             NSString *mimeType = [self MIMETypeForFilename:filename
                                            defaultMIMEType:@"video/mp4"];
             GTLRUploadParameters *uploadParameters =
-            [GTLRUploadParameters uploadParametersWithFileURL:fileToUploadURL
+            [GTLRUploadParameters uploadParametersWithFileURL:fileURL
                                                      MIMEType:mimeType];
-            uploadParameters.uploadLocationURL = fileURL;
+            uploadParameters.uploadLocationURL = nil;
             GTLRYouTubeQuery_VideosInsert *query =
             [GTLRYouTubeQuery_VideosInsert queryWithObject:video
                                                       part:@"snippet,status"
@@ -87,6 +89,8 @@
 -(void)uploadVideoSimple:(NSURL *)fileURL withName:(NSString *)videoName description:(NSString *)descriptionText andCompletion:(CompletionBlock)completion{
     if(self.authorizer && [self.authorizer canAuthorize]){
         if(self.apiKey){
+            self.servive.APIKey = self.apiKey;
+            self.servive.authorizer = self.authorizer;
             GTLRYouTube_VideoStatus *status = [GTLRYouTube_VideoStatus object];
             status.privacyStatus = @"public";
             
@@ -101,25 +105,29 @@
             video.status = status;
             video.snippet = snippet;
             
-            NSURL *fileToUploadURL = [NSURL fileURLWithPath:[[NSBundle mainBundle] pathForResource:@"demo" ofType:@"mov"]];
             NSError *fileError;
-            if (![fileToUploadURL checkPromisedItemIsReachableAndReturnError:&fileError]) {
+            if (![fileURL checkPromisedItemIsReachableAndReturnError:&fileError]) {
                 completion(FALSE);
             }
             // Get a file handle for the upload data.
-            NSString *filename = [fileToUploadURL lastPathComponent];
+            NSString *filename = [fileURL lastPathComponent];
             NSString *mimeType = [self MIMETypeForFilename:filename
                                            defaultMIMEType:@"video/mp4"];
             GTLRUploadParameters *uploadParameters =
-            [GTLRUploadParameters uploadParametersWithFileURL:fileToUploadURL
+            [GTLRUploadParameters uploadParametersWithFileURL:fileURL
                                                      MIMEType:mimeType];
-            uploadParameters.uploadLocationURL = fileURL;
+            uploadParameters.uploadLocationURL = nil;
             GTLRYouTubeQuery_VideosInsert *query =
             [GTLRYouTubeQuery_VideosInsert queryWithObject:video
                                                       part:@"snippet,status"
                                           uploadParameters:uploadParameters];
-            
-            [self.servive executeQuery:query completionHandler:^(GTLRServiceTicket * _Nonnull callbackTicket, id  _Nullable object, NSError * _Nullable callbackError) {
+            query.executionParameters.uploadProgressBlock = ^(GTLRServiceTicket *ticket,
+                                                              unsigned long long numberOfBytesRead,
+                                                              unsigned long long dataLength) {
+                
+                
+            };
+            [self.servive executeQuery:query completionHandler:^(GTLRServiceTicket * _Nonnull callbackTicket, GTLRYouTube_Video *uploadedVideo, NSError * _Nullable callbackError) {
                 if (callbackError == nil) {
                     completion(TRUE);
                 } else {
@@ -274,8 +282,11 @@
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         sharedMyManager = [[self alloc] init];
+        sharedMyManager.servive = [[GTLRYouTubeService alloc] init];
     });
     return sharedMyManager;
 }
+
+
 
 @end
